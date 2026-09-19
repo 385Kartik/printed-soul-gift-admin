@@ -64,6 +64,11 @@ export const AdminProductEditPage: React.FC = () => {
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
   const [tagsInput, setTagsInput] = useState("")
+  const [bulkPricingTiers, setBulkPricingTiers] = useState<any[]>([
+    { title: "Buy 1 Gift", subtitle: "Standard price", minQty: 1, maxQty: 1, discountPercent: 0, badgeText: "" },
+    { title: "Buy 2 - 20 Gifts", subtitle: "Best option", minQty: 2, maxQty: 20, discountPercent: 45, badgeText: "Save 45%" },
+    { title: "More than 21 Gifts", subtitle: "Save more", minQty: 21, maxQty: 9999, discountPercent: 48, badgeText: "Save 48%", isMostPopular: true },
+  ])
 
   useEffect(() => {
     const init = async () => {
@@ -94,6 +99,9 @@ export const AdminProductEditPage: React.FC = () => {
             setSelectedOccasions(current.giftOccasions || [])
             setSelectedRecipients(current.recipient || [])
             setTagsInput(current.tags ? current.tags.join(", ") : "")
+            if (current.bulkPricingTiers && current.bulkPricingTiers.length > 0) {
+              setBulkPricingTiers(current.bulkPricingTiers)
+            }
           }
         }
       } catch (err: any) {
@@ -145,6 +153,41 @@ export const AdminProductEditPage: React.FC = () => {
     )
   }
 
+  const handleUpdateTier = (idx: number, field: string, value: any) => {
+    setBulkPricingTiers((prev) => {
+      const next = [...prev]
+      next[idx] = { ...next[idx], [field]: value }
+      return next
+    })
+  }
+
+  const handleAddTier = () => {
+    setBulkPricingTiers((prev) => [
+      ...prev,
+      {
+        title: "New Tier",
+        subtitle: "",
+        minQty: 1,
+        maxQty: 10,
+        discountPercent: 10,
+        badgeText: "",
+        isMostPopular: false,
+      },
+    ])
+  }
+
+  const handleRemoveTier = (idx: number) => {
+    setBulkPricingTiers((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  const handleResetTiers = () => {
+    setBulkPricingTiers([
+      { title: "Buy 1 Gift", subtitle: "Standard price", minQty: 1, maxQty: 1, discountPercent: 0, badgeText: "" },
+      { title: "Buy 2 - 20 Gifts", subtitle: "Best option", minQty: 2, maxQty: 20, discountPercent: 45, badgeText: "Save 45%" },
+      { title: "More than 21 Gifts", subtitle: "Save more", minQty: 21, maxQty: 9999, discountPercent: 48, badgeText: "Save 48%", isMostPopular: true },
+    ])
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return setError("Product name is required")
@@ -176,6 +219,7 @@ export const AdminProductEditPage: React.FC = () => {
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean),
+        bulkPricingTiers,
       }
 
       if (isEdit && id) {
@@ -424,6 +468,190 @@ export const AdminProductEditPage: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Bulk Tiered Pricing Box */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b pb-3">
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm">
+                Buy More, Save More (Tiered Quantity Pricing)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Configure volume discount tiers shown on the storefront product page (Giftana style).
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResetTiers}
+                className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md border border-slate-200 transition-colors"
+              >
+                Reset Defaults
+              </button>
+              <button
+                type="button"
+                onClick={handleAddTier}
+                className="px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 rounded-md text-xs font-medium flex items-center gap-1 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Tier</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {bulkPricingTiers.map((tier, idx) => {
+              const basePrice = Number(price) || 0
+              const discountedUnit = Math.round(basePrice * (1 - (tier.discountPercent || 0) / 100))
+              return (
+                <div
+                  key={idx}
+                  className={`p-4 rounded-xl border transition-all ${
+                    tier.isMostPopular
+                      ? "border-amber-400 bg-amber-50/30 ring-1 ring-amber-400/50"
+                      : "border-slate-200 bg-slate-50/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                      Tier {idx + 1}
+                      {tier.isMostPopular && (
+                        <span className="ml-2 px-2 py-0.5 bg-amber-600 text-white rounded text-[10px] font-bold normal-case">
+                          Most Popular
+                        </span>
+                      )}
+                    </span>
+                    {bulkPricingTiers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTier(idx)}
+                        className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                        title="Delete tier"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                        Tier Title *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={tier.title}
+                        onChange={(e) => handleUpdateTier(idx, "title", e.target.value)}
+                        placeholder="e.g. Buy 1 Gift, Buy 2 - 20"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                        Subtitle / Note
+                      </label>
+                      <input
+                        type="text"
+                        value={tier.subtitle || ""}
+                        onChange={(e) => handleUpdateTier(idx, "subtitle", e.target.value)}
+                        placeholder="e.g. Standard price, Best option"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                          Min Qty
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          required
+                          value={tier.minQty}
+                          onChange={(e) => handleUpdateTier(idx, "minQty", Number(e.target.value))}
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                          Max Qty
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          required
+                          value={tier.maxQty}
+                          onChange={(e) => handleUpdateTier(idx, "maxQty", Number(e.target.value))}
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                          Discount %
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="95"
+                          value={tier.discountPercent}
+                          onChange={(e) =>
+                            handleUpdateTier(idx, "discountPercent", Number(e.target.value))
+                          }
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-bold text-amber-700"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                          Badge Text
+                        </label>
+                        <input
+                          type="text"
+                          value={tier.badgeText || ""}
+                          onChange={(e) => handleUpdateTier(idx, "badgeText", e.target.value)}
+                          placeholder="Save 45%"
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2.5 border-t border-slate-200/70 flex items-center justify-between text-xs text-slate-600">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={!!tier.isMostPopular}
+                        onChange={(e) => {
+                          setBulkPricingTiers((prev) =>
+                            prev.map((t, i) => ({
+                              ...t,
+                              isMostPopular: i === idx ? e.target.checked : false,
+                            }))
+                          )
+                        }}
+                        className="w-3.5 h-3.5 text-amber-600 rounded border-slate-300 focus:ring-amber-500"
+                      />
+                      <span className="font-medium text-[11px]">Highlight as "Most Popular"</span>
+                    </label>
+
+                    <div className="text-[11px] font-medium text-slate-500">
+                      Calculated Unit Price:{" "}
+                      <span className="font-bold text-slate-900">₹{discountedUnit}</span>
+                      {basePrice > 0 && tier.discountPercent > 0 && (
+                        <span className="line-through ml-1.5 text-slate-400">₹{basePrice}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         {/* Gift Personalization Controls */}

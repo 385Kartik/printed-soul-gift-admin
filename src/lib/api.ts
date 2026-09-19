@@ -72,6 +72,12 @@ export const adminApi = {
   updateBanner: (id: string, data: any) => api.put(`/admin/banners/${id}`, data),
   deleteBanner: (id: string) => api.delete(`/admin/banners/${id}`),
 
+  // Addons ("Make It Special")
+  getAddons: () => api.get("/admin/addons"),
+  createAddon: (data: any) => api.post("/admin/addons", data),
+  updateAddon: (id: string, data: any) => api.put(`/admin/addons/${id}`, data),
+  deleteAddon: (id: string) => api.delete(`/admin/addons/${id}`),
+
   // Upload
   uploadFile: (file: File) => {
     const fd = new FormData()

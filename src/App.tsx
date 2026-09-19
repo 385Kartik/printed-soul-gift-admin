@@ -12,6 +12,7 @@ import { AdminOrderDetailPage } from "./pages/admin/AdminOrderDetailPage"
 import { AdminRefundsPage } from "./pages/admin/AdminRefundsPage"
 import { AdminCustomersPage } from "./pages/admin/AdminCustomersPage"
 import { AdminBannersPage } from "./pages/admin/AdminBannersPage"
+import { AdminAddonsPage } from "./pages/admin/AdminAddonsPage"
 import { Loader2 } from "lucide-react"
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -50,6 +51,7 @@ export const App: React.FC = () => {
         <Route path="products" element={<AdminProductsPage />} />
         <Route path="products/new" element={<AdminProductEditPage />} />
         <Route path="products/edit/:id" element={<AdminProductEditPage />} />
+        <Route path="addons" element={<AdminAddonsPage />} />
         <Route path="orders" element={<AdminOrdersPage />} />
         <Route path="orders/:id" element={<AdminOrderDetailPage />} />
         <Route path="refunds" element={<AdminRefundsPage />} />
