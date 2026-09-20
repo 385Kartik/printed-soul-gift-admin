@@ -70,6 +70,9 @@ export const AdminProductEditPage: React.FC = () => {
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingHoverMedia, setUploadingHoverMedia] = useState(false)
+  const [imageUploadError, setImageUploadError] = useState("")
+  const [hoverMediaUploadError, setHoverMediaUploadError] = useState("")
+  const [hoverMediaUploadSuccess, setHoverMediaUploadSuccess] = useState("")
   const [error, setError] = useState("")
   const [newImageUrl, setNewImageUrl] = useState("")
 
@@ -172,13 +175,19 @@ export const AdminProductEditPage: React.FC = () => {
 
     try {
       setUploadingImage(true)
+      setImageUploadError("")
       const res = await adminApi.uploadFile(file)
       const url = res.data?.data?.url || res.data?.data?.path
       if (url) {
         setImages((prev) => [...prev, url])
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Image upload failed")
+      const msg =
+        err?.response?.status === 413
+          ? "File too large (exceeds 60MB server limit). Please choose a smaller image."
+          : err?.response?.data?.message || err?.message || "Image upload failed"
+      setImageUploadError(msg)
+      setError(msg)
     } finally {
       setUploadingImage(false)
     }
@@ -199,13 +208,21 @@ export const AdminProductEditPage: React.FC = () => {
     if (!file) return
     try {
       setUploadingHoverMedia(true)
+      setHoverMediaUploadError("")
+      setHoverMediaUploadSuccess("")
       const res = await adminApi.uploadFile(file)
       const url = res.data?.data?.url || res.data?.data?.path
       if (url) {
         setHoverMediaUrl(url)
+        setHoverMediaUploadSuccess("Video clip uploaded successfully!")
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Hover media upload failed")
+      const msg =
+        err?.response?.status === 413
+          ? "File too large (exceeds 60MB server limit). Please select a video under 60MB."
+          : err?.response?.data?.message || err?.message || "Hover media upload failed"
+      setHoverMediaUploadError(msg)
+      setError(msg)
     } finally {
       setUploadingHoverMedia(false)
     }
@@ -630,6 +647,22 @@ export const AdminProductEditPage: React.FC = () => {
             </label>
           </div>
 
+          {imageUploadError && (
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{imageUploadError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setImageUploadError("")}
+                className="text-rose-400 hover:text-rose-700 text-xs font-bold px-1"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {images.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 pt-2">
               {images.map((img, idx) => (
@@ -737,11 +770,43 @@ export const AdminProductEditPage: React.FC = () => {
                 className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
               />
 
+              {hoverMediaUploadError && (
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                    <span>{hoverMediaUploadError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHoverMediaUploadError("")}
+                    className="text-rose-400 hover:text-rose-700 text-xs font-bold px-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {hoverMediaUploadSuccess && (
+                <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                    <span>{hoverMediaUploadSuccess}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHoverMediaUploadSuccess("")}
+                    className="text-emerald-400 hover:text-emerald-700 text-xs font-bold px-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {hoverMediaUrl && (
                 <div className="flex items-center gap-3 pt-1">
                   <div className="w-24 h-24 rounded-lg overflow-hidden border border-amber-300 bg-black shrink-0 relative">
                     <video
-                      src={hoverMediaUrl}
+                      src={getImageUrl(hoverMediaUrl)}
                       autoPlay
                       muted
                       loop
@@ -796,6 +861,63 @@ export const AdminProductEditPage: React.FC = () => {
                 placeholder="Leave blank to use the 2nd product image, or paste custom image URL..."
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
               />
+
+              {hoverMediaUploadError && (
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                    <span>{hoverMediaUploadError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHoverMediaUploadError("")}
+                    className="text-rose-400 hover:text-rose-700 text-xs font-bold px-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {hoverMediaUploadSuccess && (
+                <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                    <span>{hoverMediaUploadSuccess}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHoverMediaUploadSuccess("")}
+                    className="text-emerald-400 hover:text-emerald-700 text-xs font-bold px-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {(hoverMediaUrl || images[1]) && (
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden border border-slate-300 bg-slate-100 shrink-0 relative">
+                    <img
+                      src={getImageUrl(hoverMediaUrl || images[1])}
+                      alt="Hover Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[8px] px-1 rounded font-bold">
+                      Hover
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-600 space-y-1">
+                    <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Hover Image Active
+                    </span>
+                    <p className="text-[11px] text-slate-500">
+                      {hoverMediaUrl
+                        ? "Custom hover image configured. Will appear when customer hovers on cards."
+                        : "Using 2nd product gallery image automatically on hover."}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <p className="text-[11px] text-slate-500 italic">
                 {hoverMediaUrl
