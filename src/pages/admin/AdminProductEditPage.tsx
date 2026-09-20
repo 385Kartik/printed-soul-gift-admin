@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useNavigate, useParams, Link } from "react-router-dom"
 import {
   ArrowLeft,
@@ -284,15 +284,63 @@ export const AdminProductEditPage: React.FC = () => {
     }
   }
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (personalizationZones.length === 0) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const rawX = ((e.clientX - rect.left) / rect.width) * 100
-    const rawY = ((e.clientY - rect.top) / rect.height) * 100
-    const x = Math.round(Math.max(5, Math.min(95, rawX)))
-    const y = Math.round(Math.max(5, Math.min(95, rawY)))
-    handleUpdateActiveZone("x", x)
-    handleUpdateActiveZone("y", y)
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const updateZonePositionFromCoords = (clientX: number, clientY: number) => {
+    if (!canvasRef.current || personalizationZones.length === 0) return
+    const rect = canvasRef.current.getBoundingClientRect()
+    const rawX = ((clientX - rect.left) / rect.width) * 100
+    const rawY = ((clientY - rect.top) / rect.height) * 100
+    const x = Math.round(Math.max(2, Math.min(98, rawX)))
+    const y = Math.round(Math.max(2, Math.min(98, rawY)))
+    setPersonalizationZones((prev) =>
+      prev.map((z, i) => (i === activeZoneIndex ? { ...z, x, y } : z))
+    )
+  }
+
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    setIsDragging(true)
+    updateZonePositionFromCoords(e.clientX, e.clientY)
+  }
+
+  // Global mouse tracking: cursor movement updates text position continuously at 60 FPS
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      updateZonePositionFromCoords(e.clientX, e.clientY)
+    }
+
+    const handleGlobalMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    window.addEventListener("mousemove", handleGlobalMouseMove)
+    window.addEventListener("mouseup", handleGlobalMouseUp)
+
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove)
+      window.removeEventListener("mouseup", handleGlobalMouseUp)
+    }
+  }, [isDragging, activeZoneIndex, personalizationZones.length])
+
+  // Touch device support (mobile / tablet)
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length > 0) {
+      setIsDragging(true)
+      updateZonePositionFromCoords(e.touches[0].clientX, e.touches[0].clientY)
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length > 0) {
+      updateZonePositionFromCoords(e.touches[0].clientX, e.touches[0].clientY)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    setIsDragging(false)
   }
 
   const handleResetTiers = () => {
@@ -888,17 +936,23 @@ export const AdminProductEditPage: React.FC = () => {
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-2">
                     
-                    {/* LEFT: INTERACTIVE PHOTO CANVAS */}
+                    {/* LEFT: INTERACTIVE PHOTO CANVAS WITH REAL-TIME DRAG */}
                     <div className="lg:col-span-6 space-y-2">
                       <div
-                        onClick={handleCanvasClick}
-                        className="relative w-full aspect-square max-w-md mx-auto rounded-2xl overflow-hidden bg-slate-950 border-2 border-dashed border-amber-400 shadow-md cursor-crosshair group select-none"
-                        title="Click anywhere to position active zone"
+                        ref={canvasRef}
+                        onMouseDown={handleCanvasMouseDown}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        className={`relative w-full aspect-square max-w-md mx-auto rounded-2xl overflow-hidden bg-slate-950 border-2 border-dashed border-amber-400 shadow-md select-none touch-none ${
+                          isDragging ? "cursor-grabbing" : "cursor-crosshair"
+                        }`}
+                        title="Click and drag anywhere to position engraving text"
                       >
                         <img
                           src={getImageUrl(images[0])}
                           alt="Product Canvas"
-                          className="w-full h-full object-cover pointer-events-none"
+                          className="w-full h-full object-cover pointer-events-none select-none"
                         />
 
                         {/* Subtle Grid Guidelines */}
@@ -926,8 +980,11 @@ export const AdminProductEditPage: React.FC = () => {
                                 left: `${zone.x}%`,
                                 top: `${zone.y}%`,
                                 transform: `translate(-50%, -50%) rotate(${zone.rotation || 0}deg)`,
+                                transition: isDragging ? "none" : "left 0.15s ease, top 0.15s ease",
                               }}
-                              className={`absolute z-10 cursor-pointer transition-all ${
+                              className={`absolute z-10 select-none ${
+                                isDragging ? "cursor-grabbing pointer-events-none" : "cursor-grab"
+                              } ${
                                 isActive
                                   ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-black/60 scale-105"
                                   : "opacity-80 hover:opacity-100"
@@ -995,14 +1052,14 @@ export const AdminProductEditPage: React.FC = () => {
                         })}
 
                         {/* Hint Pill */}
-                        <div className="absolute bottom-2.5 left-2.5 bg-black/80 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-1 rounded-md pointer-events-none flex items-center gap-1 shadow-xs">
-                          <Crosshair className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Click photo to move active zone</span>
+                        <div className="absolute bottom-2.5 left-2.5 bg-black/85 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-1 rounded-md pointer-events-none flex items-center gap-1.5 shadow-xs">
+                          <Crosshair className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                          <span>Drag or click photo to position text</span>
                         </div>
                       </div>
 
-                      <p className="text-[11px] text-slate-500 text-center">
-                        💡 Click anywhere on the image canvas to instantly move the active engraving text!
+                      <p className="text-[11px] text-slate-500 text-center font-medium">
+                        💡 Click or drag anywhere on the canvas — the text moves live in real time with your cursor!
                       </p>
                     </div>
 
