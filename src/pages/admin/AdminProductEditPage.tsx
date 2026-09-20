@@ -9,9 +9,31 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  Move,
+  RotateCw,
+  Type,
+  Eye,
+  Crosshair,
+  Layers,
 } from "lucide-react"
 import { adminApi } from "../../lib/api"
 import { getImageUrl } from "../../lib/utils"
+
+export interface PersonalizationZone {
+  id?: string
+  name: string
+  x: number // 0 - 100 percentage
+  y: number // 0 - 100 percentage
+  fontSize: number // in px
+  textColor: string // hex
+  rotation: number // in degrees
+  isCurved: boolean
+  curveRadius: number // -100 to 100
+  hasBackground: boolean // default false
+  backgroundColor?: string
+  maxChars: number
+  sampleText?: string
+}
 
 const OCCASIONS_LIST = [
   "Diwali",
@@ -61,6 +83,8 @@ export const AdminProductEditPage: React.FC = () => {
   const [isPersonalizable, setIsPersonalizable] = useState(false)
   const [personalizationPrompt, setPersonalizationPrompt] = useState("Enter Name or Custom Message")
   const [allowCustomImageUpload, setAllowCustomImageUpload] = useState(false)
+  const [personalizationZones, setPersonalizationZones] = useState<PersonalizationZone[]>([])
+  const [activeZoneIndex, setActiveZoneIndex] = useState<number>(0)
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
   const [tagsInput, setTagsInput] = useState("")
@@ -96,6 +120,27 @@ export const AdminProductEditPage: React.FC = () => {
             setIsPersonalizable(!!current.isPersonalizable)
             setPersonalizationPrompt(current.personalizationPrompt || "Enter Name or Custom Message")
             setAllowCustomImageUpload(!!current.allowCustomImageUpload)
+            if (current.personalizationZones && current.personalizationZones.length > 0) {
+              setPersonalizationZones(current.personalizationZones)
+            } else if (current.isPersonalizable) {
+              setPersonalizationZones([
+                {
+                  id: "zone-1",
+                  name: (current.name || "").toLowerCase().includes("diary") ? "Diary" : "Front",
+                  x: 50,
+                  y: 50,
+                  fontSize: 20,
+                  textColor: "#ffffff",
+                  rotation: 0,
+                  isCurved: false,
+                  curveRadius: 35,
+                  hasBackground: false,
+                  backgroundColor: "rgba(0,0,0,0.45)",
+                  maxChars: 16,
+                  sampleText: "Your Name",
+                },
+              ])
+            }
             setSelectedOccasions(current.giftOccasions || [])
             setSelectedRecipients(current.recipient || [])
             setTagsInput(current.tags ? current.tags.join(", ") : "")
@@ -180,6 +225,76 @@ export const AdminProductEditPage: React.FC = () => {
     setBulkPricingTiers((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  // Personalization Zone Management (Visual Mockup Positioning)
+  const handleTogglePersonalizable = (checked: boolean) => {
+    setIsPersonalizable(checked)
+    if (checked && personalizationZones.length === 0) {
+      setPersonalizationZones([
+        {
+          id: `zone-${Date.now()}`,
+          name: name.toLowerCase().includes("diary") ? "Diary" : "Front",
+          x: 50,
+          y: 50,
+          fontSize: 20,
+          textColor: "#ffffff",
+          rotation: 0,
+          isCurved: false,
+          curveRadius: 35,
+          hasBackground: false,
+          backgroundColor: "rgba(0,0,0,0.45)",
+          maxChars: 16,
+          sampleText: "Your Name",
+        },
+      ])
+      setActiveZoneIndex(0)
+    }
+  }
+
+  const handleAddZone = () => {
+    const nextIdx = personalizationZones.length + 1
+    const newZone: PersonalizationZone = {
+      id: `zone-${Date.now()}`,
+      name: nextIdx === 1 ? "Product" : nextIdx === 2 ? "Pen" : `Item ${nextIdx}`,
+      x: 50,
+      y: nextIdx === 1 ? 50 : 75,
+      fontSize: 20,
+      textColor: "#ffffff",
+      rotation: 0,
+      isCurved: false,
+      curveRadius: 35,
+      hasBackground: false,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      maxChars: 16,
+      sampleText: "Your Name",
+    }
+    setPersonalizationZones((prev) => [...prev, newZone])
+    setActiveZoneIndex(personalizationZones.length)
+  }
+
+  const handleUpdateActiveZone = (field: keyof PersonalizationZone, value: any) => {
+    setPersonalizationZones((prev) =>
+      prev.map((z, i) => (i === activeZoneIndex ? { ...z, [field]: value } : z))
+    )
+  }
+
+  const handleRemoveZone = (index: number) => {
+    setPersonalizationZones((prev) => prev.filter((_, i) => i !== index))
+    if (activeZoneIndex >= index && activeZoneIndex > 0) {
+      setActiveZoneIndex(activeZoneIndex - 1)
+    }
+  }
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (personalizationZones.length === 0) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const rawX = ((e.clientX - rect.left) / rect.width) * 100
+    const rawY = ((e.clientY - rect.top) / rect.height) * 100
+    const x = Math.round(Math.max(5, Math.min(95, rawX)))
+    const y = Math.round(Math.max(5, Math.min(95, rawY)))
+    handleUpdateActiveZone("x", x)
+    handleUpdateActiveZone("y", y)
+  }
+
   const handleResetTiers = () => {
     setBulkPricingTiers([
       { title: "Buy 1 Gift", subtitle: "Standard price", minQty: 1, maxQty: 1, discountPercent: 0, badgeText: "" },
@@ -213,6 +328,7 @@ export const AdminProductEditPage: React.FC = () => {
         isPersonalizable,
         personalizationPrompt: isPersonalizable ? personalizationPrompt : undefined,
         allowCustomImageUpload: isPersonalizable ? allowCustomImageUpload : false,
+        personalizationZones: isPersonalizable ? personalizationZones : [],
         giftOccasions: selectedOccasions,
         recipient: selectedRecipients,
         tags: tagsInput
@@ -654,17 +770,19 @@ export const AdminProductEditPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Gift Personalization Controls */}
-        <div className="bg-amber-50/50 rounded-xl border border-amber-200 p-6 shadow-sm space-y-4">
+        {/* ═════════════════════════════════════════════════════════
+            GIFT PERSONALIZATION CONTROLS & VISUAL PLACEMENT STUDIO
+           ═════════════════════════════════════════════════════════ */}
+        <div className="bg-amber-50/50 rounded-2xl border border-amber-200 p-6 shadow-sm space-y-6">
           <div className="flex items-center justify-between border-b border-amber-200/60 pb-3">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-600" />
+              <Sparkles className="w-5 h-5 text-amber-600" />
               <div>
-                <h3 className="font-semibold text-amber-950 text-sm">
-                  Gift Personalization Features
+                <h3 className="font-bold text-amber-950 text-sm sm:text-base">
+                  Gift Personalization & Laser Engraving Studio
                 </h3>
-                <p className="text-[11px] text-amber-800">
-                  Allow customers to enter a custom engraved name/message or upload a personal logo/photo.
+                <p className="text-xs text-amber-800">
+                  Allow customers to customize names/text, and configure exact engraving positions on the product photo.
                 </p>
               </div>
             </div>
@@ -672,39 +790,533 @@ export const AdminProductEditPage: React.FC = () => {
               <input
                 type="checkbox"
                 checked={isPersonalizable}
-                onChange={(e) => setIsPersonalizable(e.target.checked)}
+                onChange={(e) => handleTogglePersonalizable(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+              <div className="w-10 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
             </label>
           </div>
 
           {isPersonalizable && (
-            <div className="space-y-4 pt-1">
-              <div>
-                <label className="block text-xs font-semibold text-amber-950 mb-1">
-                  Customer Prompt Label
-                </label>
-                <input
-                  type="text"
-                  value={personalizationPrompt}
-                  onChange={(e) => setPersonalizationPrompt(e.target.value)}
-                  placeholder="e.g. Enter Name to Engrave (Max 25 characters)"
-                  className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
-                />
+            <div className="space-y-6">
+              {/* Basic Customer Settings */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-amber-950 mb-1">
+                    Customer Prompt Label
+                  </label>
+                  <input
+                    type="text"
+                    value={personalizationPrompt}
+                    onChange={(e) => setPersonalizationPrompt(e.target.value)}
+                    placeholder="e.g. Enter Name or Custom Text"
+                    className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 font-medium"
+                  />
+                </div>
+
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="customImage"
+                      checked={allowCustomImageUpload}
+                      onChange={(e) => setAllowCustomImageUpload(e.target.checked)}
+                      className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500"
+                    />
+                    <span className="text-xs font-medium text-amber-950">
+                      Allow customer to upload custom photo or company logo
+                    </span>
+                  </label>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="customImage"
-                  checked={allowCustomImageUpload}
-                  onChange={(e) => setAllowCustomImageUpload(e.target.checked)}
-                  className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500"
-                />
-                <label htmlFor="customImage" className="text-xs font-medium text-amber-950">
-                  Allow customer to upload custom photo or company logo for print
-                </label>
+              {/* ═════════════════════════════════════════════════════
+                  VISUAL ENGRAVING PLACEMENT STUDIO (CANVAS & CONTROLS)
+                 ═════════════════════════════════════════════════════ */}
+              <div className="border border-amber-200/90 rounded-2xl bg-white p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2 border-b pb-3">
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                      <Crosshair className="w-4 h-4 text-amber-600" />
+                      <span>Photo Placement & Style Studio</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Click directly on the photo to position text. Configure curved text, rotation, and laser colors.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddZone}
+                    className="px-3 py-1.5 bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Engraving Zone</span>
+                  </button>
+                </div>
+
+                {/* Zone Navigation Tabs */}
+                {personalizationZones.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {personalizationZones.map((zone, zIdx) => {
+                      const isActive = zIdx === activeZoneIndex
+                      return (
+                        <button
+                          key={zone.id || zIdx}
+                          type="button"
+                          onClick={() => setActiveZoneIndex(zIdx)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border ${
+                            isActive
+                              ? "bg-amber-500 text-zinc-950 border-amber-600 shadow-xs"
+                              : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          <span>{zone.name || `Item ${zIdx + 1}`}</span>
+                          <span className="text-[10px] opacity-75 font-mono">
+                            ({zone.x}%, {zone.y}%)
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {images.length === 0 ? (
+                  <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-300 rounded-xl text-xs text-slate-500">
+                    Upload at least one product image in the "Product Images" section above to visually position engraving text on the photo.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-2">
+                    
+                    {/* LEFT: INTERACTIVE PHOTO CANVAS */}
+                    <div className="lg:col-span-6 space-y-2">
+                      <div
+                        onClick={handleCanvasClick}
+                        className="relative w-full aspect-square max-w-md mx-auto rounded-2xl overflow-hidden bg-slate-950 border-2 border-dashed border-amber-400 shadow-md cursor-crosshair group select-none"
+                        title="Click anywhere to position active zone"
+                      >
+                        <img
+                          src={getImageUrl(images[0])}
+                          alt="Product Canvas"
+                          className="w-full h-full object-cover pointer-events-none"
+                        />
+
+                        {/* Subtle Grid Guidelines */}
+                        <div className="absolute inset-0 pointer-events-none opacity-25 group-hover:opacity-45 transition-opacity">
+                          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white" />
+                          <div className="absolute top-1/2 left-0 right-0 h-px bg-white" />
+                        </div>
+
+                        {/* Render All Defined Zones */}
+                        {personalizationZones.map((zone, zIdx) => {
+                          const isActive = zIdx === activeZoneIndex
+                          const textDisplay = zone.sampleText || zone.name || "Sample Text"
+                          const curvature = zone.curveRadius ?? 35
+                          const arcHeight = (curvature / 100) * 36
+                          const pathId = `admin-curve-${zone.id || zIdx}`
+
+                          return (
+                            <div
+                              key={zone.id || zIdx}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setActiveZoneIndex(zIdx)
+                              }}
+                              style={{
+                                left: `${zone.x}%`,
+                                top: `${zone.y}%`,
+                                transform: `translate(-50%, -50%) rotate(${zone.rotation || 0}deg)`,
+                              }}
+                              className={`absolute z-10 cursor-pointer transition-all ${
+                                isActive
+                                  ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-black/60 scale-105"
+                                  : "opacity-80 hover:opacity-100"
+                              }`}
+                            >
+                              {/* Indicator Pin Badge */}
+                              <span className="absolute -top-5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[9px] font-extrabold tracking-wider uppercase whitespace-nowrap bg-black/85 text-amber-300 border border-amber-400/40 pointer-events-none shadow-xs">
+                                📍 {zone.name}
+                              </span>
+
+                              {/* Engraved Text (Curved vs Straight) */}
+                              {zone.isCurved ? (
+                                <div
+                                  style={{
+                                    backgroundColor: zone.hasBackground
+                                      ? zone.backgroundColor || "rgba(0,0,0,0.5)"
+                                      : "transparent",
+                                    padding: zone.hasBackground ? "3px 6px" : "0",
+                                    borderRadius: zone.hasBackground ? "6px" : "0",
+                                  }}
+                                >
+                                  <svg viewBox="0 0 240 80" className="w-44 h-16 overflow-visible pointer-events-none">
+                                    <defs>
+                                      <path
+                                        id={pathId}
+                                        d={`M 10,${40 + arcHeight} Q 120,${40 - arcHeight} 230,${40 + arcHeight}`}
+                                        fill="none"
+                                      />
+                                    </defs>
+                                    <text
+                                      fill={zone.textColor || "#ffffff"}
+                                      fontSize={zone.fontSize || 18}
+                                      fontWeight="900"
+                                      textAnchor="middle"
+                                      style={{
+                                        filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.95))",
+                                        letterSpacing: "0.04em",
+                                      }}
+                                    >
+                                      <textPath href={`#${pathId}`} startOffset="50%">
+                                        {textDisplay}
+                                      </textPath>
+                                    </text>
+                                  </svg>
+                                </div>
+                              ) : (
+                                <div
+                                  style={{
+                                    backgroundColor: zone.hasBackground
+                                      ? zone.backgroundColor || "rgba(0,0,0,0.5)"
+                                      : "transparent",
+                                    padding: zone.hasBackground ? "4px 8px" : "0",
+                                    borderRadius: zone.hasBackground ? "6px" : "0",
+                                    color: zone.textColor || "#ffffff",
+                                    fontSize: `${zone.fontSize || 18}px`,
+                                    textShadow: "0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.8)",
+                                  }}
+                                  className="font-black tracking-wide whitespace-nowrap select-none"
+                                >
+                                  {textDisplay}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+
+                        {/* Hint Pill */}
+                        <div className="absolute bottom-2.5 left-2.5 bg-black/80 backdrop-blur-xs text-white text-[10px] font-medium px-2 py-1 rounded-md pointer-events-none flex items-center gap-1 shadow-xs">
+                          <Crosshair className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Click photo to move active zone</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-slate-500 text-center">
+                        💡 Click anywhere on the image canvas to instantly move the active engraving text!
+                      </p>
+                    </div>
+
+                    {/* RIGHT: ZONE CONTROLS & INSPECTOR */}
+                    {personalizationZones[activeZoneIndex] && (
+                      <div className="lg:col-span-6 space-y-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                        {/* Zone Header */}
+                        <div className="flex items-center justify-between border-b pb-2">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Zone Inspector: {personalizationZones[activeZoneIndex].name}</span>
+                          </span>
+
+                          {personalizationZones.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveZone(activeZoneIndex)}
+                              className="text-rose-600 hover:text-rose-800 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove Zone</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Zone Name & Sample */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                              Zone Name *
+                            </label>
+                            <input
+                              type="text"
+                              value={personalizationZones[activeZoneIndex].name}
+                              onChange={(e) => handleUpdateActiveZone("name", e.target.value)}
+                              placeholder="e.g. Diary, Pen, Flask"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                              Preview Text
+                            </label>
+                            <input
+                              type="text"
+                              value={personalizationZones[activeZoneIndex].sampleText || ""}
+                              onChange={(e) => handleUpdateActiveZone("sampleText", e.target.value)}
+                              placeholder="Your Name"
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Quick Placement Presets */}
+                        <div>
+                          <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                            Quick Position Presets:
+                          </label>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateActiveZone("x", 50)
+                                handleUpdateActiveZone("y", 50)
+                              }}
+                              className="px-2 py-1 text-[11px] bg-white border border-slate-200 rounded font-medium hover:bg-amber-50 hover:border-amber-300 transition-colors"
+                            >
+                              Center
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateActiveZone("x", 78)
+                                handleUpdateActiveZone("y", 78)
+                              }}
+                              className="px-2 py-1 text-[11px] bg-white border border-slate-200 rounded font-medium hover:bg-amber-50 hover:border-amber-300 transition-colors"
+                            >
+                              Bottom Right
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateActiveZone("x", 50)
+                                handleUpdateActiveZone("y", 78)
+                              }}
+                              className="px-2 py-1 text-[11px] bg-white border border-slate-200 rounded font-medium hover:bg-amber-50 hover:border-amber-300 transition-colors"
+                            >
+                              Bottom Center
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateActiveZone("x", 50)
+                                handleUpdateActiveZone("y", 22)
+                              }}
+                              className="px-2 py-1 text-[11px] bg-white border border-slate-200 rounded font-medium hover:bg-amber-50 hover:border-amber-300 transition-colors"
+                            >
+                              Top Center
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Coordinates Sliders (X & Y) */}
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                          <div>
+                            <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-1">
+                              <span>X (Left):</span>
+                              <span className="font-mono text-amber-700">
+                                {personalizationZones[activeZoneIndex].x}%
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min="5"
+                              max="95"
+                              value={personalizationZones[activeZoneIndex].x}
+                              onChange={(e) => handleUpdateActiveZone("x", Number(e.target.value))}
+                              className="w-full accent-amber-600"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-1">
+                              <span>Y (Top):</span>
+                              <span className="font-mono text-amber-700">
+                                {personalizationZones[activeZoneIndex].y}%
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min="5"
+                              max="95"
+                              value={personalizationZones[activeZoneIndex].y}
+                              onChange={(e) => handleUpdateActiveZone("y", Number(e.target.value))}
+                              className="w-full accent-amber-600"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Typography: Font Size & Rotation */}
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                          <div>
+                            <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-1">
+                              <span>Font Size:</span>
+                              <span className="font-mono text-slate-900">
+                                {personalizationZones[activeZoneIndex].fontSize || 18}px
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min="12"
+                              max="48"
+                              value={personalizationZones[activeZoneIndex].fontSize || 18}
+                              onChange={(e) =>
+                                handleUpdateActiveZone("fontSize", Number(e.target.value))
+                              }
+                              className="w-full accent-amber-600"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-1">
+                              <span>Rotation:</span>
+                              <span className="font-mono text-slate-900">
+                                {personalizationZones[activeZoneIndex].rotation || 0}°
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min="-90"
+                              max="90"
+                              value={personalizationZones[activeZoneIndex].rotation || 0}
+                              onChange={(e) =>
+                                handleUpdateActiveZone("rotation", Number(e.target.value))
+                              }
+                              className="w-full accent-amber-600"
+                            />
+                          </div>
+                        </div>
+
+                        {/* CURVED / ARCHED TEXT CONTROL */}
+                        <div className="pt-2 border-t border-slate-200 space-y-2">
+                          <label className="flex items-center justify-between cursor-pointer select-none">
+                            <span className="text-xs font-bold text-slate-800">
+                              Curved / Arched Text:
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={!!personalizationZones[activeZoneIndex].isCurved}
+                              onChange={(e) =>
+                                handleUpdateActiveZone("isCurved", e.target.checked)
+                              }
+                              className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500"
+                            />
+                          </label>
+
+                          {personalizationZones[activeZoneIndex].isCurved && (
+                            <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200/80 space-y-1">
+                              <div className="flex justify-between text-[11px] font-bold text-amber-950">
+                                <span>Curvature Arc:</span>
+                                <span className="font-mono">
+                                  {personalizationZones[activeZoneIndex].curveRadius ?? 35}
+                                  {(personalizationZones[activeZoneIndex].curveRadius ?? 35) > 0
+                                    ? " (Arch Up ⌒)"
+                                    : " (Smile Curve ⌣)"}
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min="-80"
+                                max="80"
+                                value={personalizationZones[activeZoneIndex].curveRadius ?? 35}
+                                onChange={(e) =>
+                                  handleUpdateActiveZone("curveRadius", Number(e.target.value))
+                                }
+                                className="w-full accent-amber-600"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* BACKGROUND BOX CONTROL (OFF BY DEFAULT AS REQUESTED) */}
+                        <div className="pt-2 border-t border-slate-200 space-y-2">
+                          <label className="flex items-center justify-between cursor-pointer select-none">
+                            <div>
+                              <span className="text-xs font-bold text-slate-800 block">
+                                Show Background Box:
+                              </span>
+                              <span className="text-[10px] text-slate-500 block">
+                                Default is off (clean text engraved directly on product).
+                              </span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={!!personalizationZones[activeZoneIndex].hasBackground}
+                              onChange={(e) =>
+                                handleUpdateActiveZone("hasBackground", e.target.checked)
+                              }
+                              className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500"
+                            />
+                          </label>
+
+                          {personalizationZones[activeZoneIndex].hasBackground && (
+                            <div className="p-2.5 rounded-lg bg-slate-100 border border-slate-200 space-y-2">
+                              <label className="block text-[11px] font-bold text-slate-700">
+                                Box Background Color / Style:
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={
+                                    personalizationZones[activeZoneIndex].backgroundColor ||
+                                    "rgba(0,0,0,0.45)"
+                                  }
+                                  onChange={(e) =>
+                                    handleUpdateActiveZone("backgroundColor", e.target.value)
+                                  }
+                                  placeholder="e.g. rgba(0,0,0,0.5) or #000000"
+                                  className="flex-1 px-2.5 py-1 text-xs rounded border border-slate-300 bg-white"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Laser Text Color Presets */}
+                        <div className="pt-2 border-t border-slate-200">
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                            Laser Engraving Text Color:
+                          </label>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {[
+                              { label: "White", color: "#ffffff" },
+                              { label: "Laser Gold", color: "#d4af37" },
+                              { label: "Silver", color: "#e2e8f0" },
+                              { label: "Dark Etch", color: "#18181b" },
+                              { label: "Rose Gold", color: "#b76e79" },
+                            ].map((c) => (
+                              <button
+                                key={c.color}
+                                type="button"
+                                onClick={() => handleUpdateActiveZone("textColor", c.color)}
+                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold border flex items-center gap-1.5 cursor-pointer transition-all ${
+                                  (personalizationZones[activeZoneIndex].textColor ||
+                                    "#ffffff") === c.color
+                                    ? "border-amber-600 ring-1 ring-amber-500 bg-white shadow-xs"
+                                    : "border-slate-300 bg-white hover:border-slate-400"
+                                }`}
+                              >
+                                <span
+                                  className="w-3 h-3 rounded-full border border-slate-400"
+                                  style={{ backgroundColor: c.color }}
+                                />
+                                <span>{c.label}</span>
+                              </button>
+                            ))}
+                            <input
+                              type="color"
+                              value={
+                                personalizationZones[activeZoneIndex].textColor || "#ffffff"
+                              }
+                              onChange={(e) =>
+                                handleUpdateActiveZone("textColor", e.target.value)
+                              }
+                              className="w-7 h-7 rounded border border-slate-300 cursor-pointer"
+                              title="Custom Color"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
