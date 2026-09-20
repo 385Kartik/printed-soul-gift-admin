@@ -15,6 +15,9 @@ import {
   Eye,
   Crosshair,
   Layers,
+  Video,
+  Film,
+  Play,
 } from "lucide-react"
 import { adminApi } from "../../lib/api"
 import { getImageUrl } from "../../lib/utils"
@@ -66,6 +69,7 @@ export const AdminProductEditPage: React.FC = () => {
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingHoverMedia, setUploadingHoverMedia] = useState(false)
   const [error, setError] = useState("")
   const [newImageUrl, setNewImageUrl] = useState("")
 
@@ -85,6 +89,8 @@ export const AdminProductEditPage: React.FC = () => {
   const [allowCustomImageUpload, setAllowCustomImageUpload] = useState(false)
   const [personalizationZones, setPersonalizationZones] = useState<PersonalizationZone[]>([])
   const [activeZoneIndex, setActiveZoneIndex] = useState<number>(0)
+  const [hoverMediaType, setHoverMediaType] = useState<"image" | "video" | "none">("image")
+  const [hoverMediaUrl, setHoverMediaUrl] = useState("")
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
   const [tagsInput, setTagsInput] = useState("")
@@ -144,6 +150,8 @@ export const AdminProductEditPage: React.FC = () => {
             setSelectedOccasions(current.giftOccasions || [])
             setSelectedRecipients(current.recipient || [])
             setTagsInput(current.tags ? current.tags.join(", ") : "")
+            setHoverMediaType(current.hoverMediaType || "image")
+            setHoverMediaUrl(current.hoverMediaUrl || "")
             if (current.bulkPricingTiers && current.bulkPricingTiers.length > 0) {
               setBulkPricingTiers(current.bulkPricingTiers)
             }
@@ -184,6 +192,23 @@ export const AdminProductEditPage: React.FC = () => {
 
   const handleRemoveImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleHoverMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      setUploadingHoverMedia(true)
+      const res = await adminApi.uploadFile(file)
+      const url = res.data?.data?.url || res.data?.data?.path
+      if (url) {
+        setHoverMediaUrl(url)
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Hover media upload failed")
+    } finally {
+      setUploadingHoverMedia(false)
+    }
   }
 
   const toggleOccasion = (occ: string) => {
@@ -377,6 +402,8 @@ export const AdminProductEditPage: React.FC = () => {
         personalizationPrompt: isPersonalizable ? personalizationPrompt : undefined,
         allowCustomImageUpload: isPersonalizable ? allowCustomImageUpload : false,
         personalizationZones: isPersonalizable ? personalizationZones : [],
+        hoverMediaType,
+        hoverMediaUrl: hoverMediaUrl.trim() || undefined,
         giftOccasions: selectedOccasions,
         recipient: selectedRecipients,
         tags: tagsInput
@@ -630,6 +657,153 @@ export const AdminProductEditPage: React.FC = () => {
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* ═════════════════════════════════════════════════════════
+            CARD ON-HOVER MEDIA DISPLAY SETTINGS (IMAGE OR VIDEO)
+           ═════════════════════════════════════════════════════════ */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="border-b pb-3">
+            <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2">
+              <Film className="w-4 h-4 text-amber-600" />
+              <span>Card On-Hover Media (Home, Catalog & Category Pages)</span>
+            </h3>
+            <p className="text-xs text-slate-500">
+              Choose what displays when a customer hovers over this product card on listing pages.
+            </p>
+          </div>
+
+          {/* Mode Selector */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { id: "image", label: "Secondary Image", icon: "🖼️", desc: "Shows 2nd photo or custom image" },
+              { id: "video", label: "Video Clip", icon: "🎬", desc: "Auto-plays short looping video" },
+              { id: "none", label: "None / Static", icon: "🚫", desc: "Keep static primary image" },
+            ].map((option) => {
+              const isSelected = hoverMediaType === option.id
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setHoverMediaType(option.id as any)}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    isSelected
+                      ? "border-amber-600 bg-amber-50/50 ring-1 ring-amber-500 shadow-2xs"
+                      : "border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-bold text-xs text-slate-900 mb-0.5">
+                    <span>{option.icon}</span>
+                    <span>{option.label}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-tight">{option.desc}</p>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Video Clip Input & Upload */}
+          {hoverMediaType === "video" && (
+            <div className="p-4 rounded-xl bg-amber-50/40 border border-amber-200/80 space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <label className="block text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                  <Video className="w-3.5 h-3.5 text-amber-600" />
+                  <span>On-Hover Video URL (MP4 / WebM):</span>
+                </label>
+                <label className="cursor-pointer px-3 py-1 bg-white hover:bg-amber-100/60 text-amber-900 border border-amber-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors">
+                  {uploadingHoverMedia ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="w-3.5 h-3.5" />
+                  )}
+                  <span>{uploadingHoverMedia ? "Uploading Video..." : "Upload MP4 Clip"}</span>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm,video/*"
+                    className="hidden"
+                    onChange={handleHoverMediaUpload}
+                    disabled={uploadingHoverMedia}
+                  />
+                </label>
+              </div>
+
+              <input
+                type="text"
+                value={hoverMediaUrl}
+                onChange={(e) => setHoverMediaUrl(e.target.value)}
+                placeholder="Paste video URL (e.g. https://.../video.mp4 or Cloudinary / S3 URL)..."
+                className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+              />
+
+              {hoverMediaUrl && (
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="w-24 h-24 rounded-lg overflow-hidden border border-amber-300 bg-black shrink-0 relative">
+                    <video
+                      src={hoverMediaUrl}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[8px] px-1 rounded font-bold">
+                      Preview
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-600 space-y-1">
+                    <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Hover Video Active
+                    </span>
+                    <p className="text-[11px] text-slate-500">
+                      When a customer hovers their mouse over this product card on Home or Catalog pages, this video will smoothly play.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Image Input & Upload */}
+          {hoverMediaType === "image" && (
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <label className="block text-xs font-bold text-slate-800">
+                  Custom Hover Image (Optional):
+                </label>
+                <label className="cursor-pointer px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors">
+                  {uploadingHoverMedia ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="w-3.5 h-3.5" />
+                  )}
+                  <span>{uploadingHoverMedia ? "Uploading..." : "Upload Hover Image"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleHoverMediaUpload}
+                    disabled={uploadingHoverMedia}
+                  />
+                </label>
+              </div>
+
+              <input
+                type="text"
+                value={hoverMediaUrl}
+                onChange={(e) => setHoverMediaUrl(e.target.value)}
+                placeholder="Leave blank to use the 2nd product image, or paste custom image URL..."
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+              />
+
+              <p className="text-[11px] text-slate-500 italic">
+                {hoverMediaUrl
+                  ? "✓ Custom hover image configured."
+                  : images[1]
+                  ? `✓ Using 2nd product photo by default on hover.`
+                  : "ℹ Add a 2nd product image or custom URL above to enable hover image effect."}
+              </p>
             </div>
           )}
         </div>
