@@ -31,3 +31,33 @@ export function formatDate(dateString?: string | Date): string {
     year: "numeric",
   })
 }
+
+export function getZoneTransformStyle(zone?: {
+  rotation?: number
+  rotateX?: number
+  rotateY?: number
+  skewX?: number
+  skewY?: number
+}): string {
+  if (!zone) return "translate(-50%, -50%)"
+  const rotZ = zone.rotation || 0
+  const rotX = zone.rotateX || 0
+  const rotY = zone.rotateY || 0
+  const skX = zone.skewX || 0
+  const skY = zone.skewY || 0
+
+  const has3D = rotX !== 0 || rotY !== 0
+  const hasSkew = skX !== 0 || skY !== 0
+
+  if (!has3D && !hasSkew) {
+    return `translate(-50%, -50%) rotate(${rotZ}deg)`
+  }
+
+  const perspectivePart = has3D ? "perspective(600px) " : ""
+  const rotPart = `rotate(${rotZ}deg)`
+  const tiltPart = has3D ? ` rotateX(${rotX}deg) rotateY(${rotY}deg)` : ""
+  const skewPart = hasSkew ? ` skewX(${skX}deg) skewY(${skY}deg)` : ""
+
+  return `translate(-50%, -50%) ${perspectivePart}${rotPart}${tiltPart}${skewPart}`.trim()
+}
+

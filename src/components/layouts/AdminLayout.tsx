@@ -58,8 +58,8 @@ export const AdminLayout: React.FC = () => {
         {/* Brand Header */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-rose-600 flex items-center justify-center text-white shadow-md">
-              <Gift className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-md">
+              <img src="/logo.png" alt="Printed Soul" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="font-serif font-bold text-base tracking-wide text-white block leading-tight">
@@ -162,7 +162,7 @@ export const AdminLayout: React.FC = () => {
         </header>
 
         {/* Page Content Outlet */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-[1800px] w-full mx-auto">
           <Outlet />
         </main>
       </div>

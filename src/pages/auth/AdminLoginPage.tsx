@@ -34,8 +34,8 @@ export const AdminLoginPage: React.FC = () => {
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-rose-600 flex items-center justify-center text-white mx-auto shadow-lg mb-4">
-            <Gift className="w-8 h-8" />
+          <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 p-2 flex items-center justify-center mx-auto shadow-md mb-4">
+            <img src="/logo.png" alt="Printed Soul Gift" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-2xl font-serif font-bold text-slate-900">Printed Soul Gift</h2>
           <p className="text-sm text-slate-500 mt-1">Admin Portal Authentication</p>

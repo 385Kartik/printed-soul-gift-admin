@@ -20,7 +20,7 @@ import {
   Play,
 } from "lucide-react"
 import { adminApi } from "../../lib/api"
-import { getImageUrl } from "../../lib/utils"
+import { getImageUrl, getZoneTransformStyle } from "../../lib/utils"
 
 export interface PersonalizationZone {
   id?: string
@@ -29,13 +29,33 @@ export interface PersonalizationZone {
   y: number // 0 - 100 percentage
   fontSize: number // in px
   textColor: string // hex
+  fontFamily?: string // font family id
   rotation: number // in degrees
+  rotateX?: number // 3D surface tilt X in degrees (-80 to 80)
+  rotateY?: number // 3D surface tilt Y in degrees (-80 to 80)
+  skewX?: number // 2D surface shear X in degrees (-60 to 60)
+  skewY?: number // 2D surface shear Y in degrees (-60 to 60)
   isCurved: boolean
   curveRadius: number // -100 to 100
   hasBackground: boolean // default false
   backgroundColor?: string
   maxChars: number
   sampleText?: string
+}
+
+export const FONT_OPTIONS = [
+  { id: "sans", name: "Modern Sans (Clean & Bold)", cssClass: "font-sans font-black", preview: "Modern Sans" },
+  { id: "serif", name: "Classic Luxury (Serif)", cssClass: "font-serif font-bold", preview: "Classic Luxury" },
+  { id: "signature", name: "Handwritten Signature", cssClass: "font-signature font-bold", preview: "Butterlott" },
+  { id: "lobster", name: "Lobster Calligraphy", cssClass: "font-lobster", preview: "Lobster" },
+  { id: "cursive", name: "Playfair Italic", cssClass: "font-cursive", preview: "Playfair" },
+  { id: "pacifico", name: "Pacifico Soft", cssClass: "font-pacifico", preview: "Pacifico" },
+  { id: "elmessiri", name: "El Messiri", cssClass: "font-elmessiri font-bold", preview: "Elmessiri" },
+]
+
+export const getZoneFontCssClass = (fontId?: string) => {
+  const found = FONT_OPTIONS.find((f) => f.id === fontId)
+  return found ? found.cssClass : "font-sans font-black"
 }
 
 const OCCASIONS_LIST = [
@@ -83,6 +103,7 @@ export const AdminProductEditPage: React.FC = () => {
   const [price, setPrice] = useState<number | "">("")
   const [comparePrice, setComparePrice] = useState<number | "">("")
   const [category, setCategory] = useState("")
+  const [subCategory, setSubCategory] = useState("")
   const [stock, setStock] = useState<number>(100)
   const [images, setImages] = useState<string[]>([])
   const [isFeatured, setIsFeatured] = useState(false)
@@ -109,7 +130,8 @@ export const AdminProductEditPage: React.FC = () => {
         const catRes = await adminApi.getCategories()
         setCategories(catRes.data?.data || [])
         if (!category && catRes.data?.data?.length > 0) {
-          setCategory(catRes.data.data[0]._id)
+          const topCats = catRes.data.data.filter((c: any) => !c.parentCategory)
+          if (topCats.length > 0) setCategory(topCats[0]._id)
         }
 
         if (isEdit && id) {
@@ -122,6 +144,7 @@ export const AdminProductEditPage: React.FC = () => {
             setPrice(current.price || "")
             setComparePrice(current.comparePrice || "")
             setCategory(typeof current.category === "object" ? current.category?._id : current.category)
+            setSubCategory(typeof current.subCategory === "object" ? current.subCategory?._id || "" : current.subCategory || "")
             setStock(current.stock ?? 100)
             setImages(current.images || [])
             setIsFeatured(!!current.isFeatured)
@@ -319,6 +342,12 @@ export const AdminProductEditPage: React.FC = () => {
     )
   }
 
+  const handleUpdateActiveZoneMultiple = (updates: Partial<PersonalizationZone>) => {
+    setPersonalizationZones((prev) =>
+      prev.map((z, i) => (i === activeZoneIndex ? { ...z, ...updates } : z))
+    )
+  }
+
   const handleRemoveZone = (index: number) => {
     setPersonalizationZones((prev) => prev.filter((_, i) => i !== index))
     if (activeZoneIndex >= index && activeZoneIndex > 0) {
@@ -411,6 +440,7 @@ export const AdminProductEditPage: React.FC = () => {
         price: Number(price),
         comparePrice: comparePrice ? Number(comparePrice) : undefined,
         category,
+        subCategory: subCategory || undefined,
         stock: Number(stock),
         images,
         isFeatured,
@@ -517,21 +547,48 @@ export const AdminProductEditPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Category *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Main Category *</label>
               <select
                 required
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                onChange={(e) => {
+                  setCategory(e.target.value)
+                  setSubCategory("")
+                }}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 font-medium"
               >
                 <option value="">Select Category</option>
-                {categories.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
+                {categories
+                  .filter((c) => !c.parentCategory)
+                  .map((c) => (
+                    <option key={c._id} value={c._id}>
+                      📁 {c.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Sub-Category (Optional)</label>
+              <select
+                value={subCategory}
+                onChange={(e) => setSubCategory(e.target.value)}
+                disabled={!category}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 font-medium disabled:bg-slate-100"
+              >
+                <option value="">None (Top-Level Only)</option>
+                {categories
+                  .filter((c) => {
+                    const pId = typeof c.parentCategory === "object" ? c.parentCategory?._id : c.parentCategory
+                    return pId === category
+                  })
+                  .map((c) => (
+                    <option key={c._id} value={c._id}>
+                      └─ {c.name}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -1268,81 +1325,114 @@ export const AdminProductEditPage: React.FC = () => {
                           return (
                             <div
                               key={zone.id || zIdx}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setActiveZoneIndex(zIdx)
-                              }}
                               style={{
+                                position: "absolute",
                                 left: `${zone.x}%`,
                                 top: `${zone.y}%`,
-                                transform: `translate(-50%, -50%) rotate(${zone.rotation || 0}deg)`,
-                                transition: isDragging ? "none" : "left 0.15s ease, top 0.15s ease",
                               }}
-                              className={`absolute z-10 select-none ${
-                                isDragging ? "cursor-grabbing pointer-events-none" : "cursor-grab"
-                              } ${
-                                isActive
-                                  ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-black/60 scale-105"
-                                  : "opacity-80 hover:opacity-100"
-                              }`}
                             >
-                              {/* Indicator Pin Badge */}
-                              <span className="absolute -top-5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[9px] font-extrabold tracking-wider uppercase whitespace-nowrap bg-black/85 text-amber-300 border border-amber-400/40 pointer-events-none shadow-xs">
-                                📍 {zone.name}
+                              {/* Indicator Pin Badge — floats above, not inside zone div, so it doesn't skew translate(-50%,-50%) centering */}
+                              <span
+                                className="absolute pointer-events-none shadow-xs flex items-center gap-1"
+                                style={{
+                                  bottom: "100%",
+                                  left: "50%",
+                                  transform: "translateX(-50%)",
+                                  marginBottom: "4px",
+                                  padding: "1px 6px",
+                                  borderRadius: "4px",
+                                  fontSize: "9px",
+                                  fontWeight: 800,
+                                  letterSpacing: "0.05em",
+                                  textTransform: "uppercase",
+                                  whiteSpace: "nowrap",
+                                  background: "rgba(0,0,0,0.85)",
+                                  color: "#fbbf24",
+                                  border: "1px solid rgba(251,191,36,0.4)",
+                                }}
+                              >
+                                <span>📍 {zone.name}</span>
+                                {isActive && (
+                                  <span style={{ color: "rgba(253,230,138,0.9)", fontFamily: "monospace" }}>
+                                    • {((zone.rotation || 0) % 360 + 360) % 360}°
+                                  </span>
+                                )}
                               </span>
 
-                              {/* Engraved Text (Curved vs Straight) */}
-                              {zone.isCurved ? (
-                                <div
-                                  style={{
-                                    backgroundColor: zone.hasBackground
-                                      ? zone.backgroundColor || "rgba(0,0,0,0.5)"
-                                      : "transparent",
-                                    padding: zone.hasBackground ? "3px 6px" : "0",
-                                    borderRadius: zone.hasBackground ? "6px" : "0",
-                                  }}
-                                >
-                                  <svg viewBox="0 0 240 80" className="w-44 h-16 overflow-visible pointer-events-none">
-                                    <defs>
-                                      <path
-                                        id={pathId}
-                                        d={`M 10,${40 + arcHeight} Q 120,${40 - arcHeight} 230,${40 + arcHeight}`}
-                                        fill="none"
-                                      />
-                                    </defs>
-                                    <text
-                                      fill={zone.textColor || "#ffffff"}
-                                      fontSize={zone.fontSize || 18}
-                                      fontWeight="900"
-                                      textAnchor="middle"
-                                      style={{
-                                        filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.95))",
-                                        letterSpacing: "0.04em",
-                                      }}
-                                    >
-                                      <textPath href={`#${pathId}`} startOffset="50%">
-                                        {textDisplay}
-                                      </textPath>
-                                    </text>
-                                  </svg>
-                                </div>
-                              ) : (
-                                <div
-                                  style={{
-                                    backgroundColor: zone.hasBackground
-                                      ? zone.backgroundColor || "rgba(0,0,0,0.5)"
-                                      : "transparent",
-                                    padding: zone.hasBackground ? "4px 8px" : "0",
-                                    borderRadius: zone.hasBackground ? "6px" : "0",
-                                    color: zone.textColor || "#ffffff",
-                                    fontSize: `${zone.fontSize || 18}px`,
-                                    textShadow: "0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.8)",
-                                  }}
-                                  className="font-black tracking-wide whitespace-nowrap select-none"
-                                >
-                                  {textDisplay}
-                                </div>
-                              )}
+                              {/* Actual zone text div — translate(-50%,-50%) now centers purely on text bounding box */}
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setActiveZoneIndex(zIdx)
+                                }}
+                                style={{
+                                  transform: getZoneTransformStyle(zone),
+                                  transition: isDragging ? "none" : "left 0.15s ease, top 0.15s ease",
+                                }}
+                                className={`select-none ${
+                                  isDragging ? "cursor-grabbing pointer-events-none" : "cursor-grab"
+                                } ${
+                                  isActive
+                                    ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-black/60 scale-105"
+                                    : "opacity-80 hover:opacity-100"
+                                }`}
+                              >
+                                {/* Engraved Text (Curved vs Straight) */}
+                                {zone.isCurved ? (
+                                  <div
+                                    style={{
+                                      backgroundColor: zone.hasBackground
+                                        ? zone.backgroundColor || "rgba(0,0,0,0.5)"
+                                        : "transparent",
+                                      padding: zone.hasBackground ? "3px 6px" : "0",
+                                      borderRadius: zone.hasBackground ? "6px" : "0",
+                                    }}
+                                  >
+                                    <svg viewBox="0 0 240 80" className="w-44 h-16 overflow-visible pointer-events-none">
+                                      <defs>
+                                        <path
+                                          id={pathId}
+                                          d={`M 10,${40 + arcHeight} Q 120,${40 - arcHeight} 230,${40 + arcHeight}`}
+                                          fill="none"
+                                        />
+                                      </defs>
+                                      <text
+                                        fill={zone.textColor || "#ffffff"}
+                                        fontSize={zone.fontSize || 18}
+                                        fontWeight="900"
+                                        textAnchor="middle"
+                                        className={getZoneFontCssClass(zone.fontFamily)}
+                                        style={{
+                                          filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.95))",
+                                          letterSpacing: "0.04em",
+                                        }}
+                                      >
+                                        <textPath href={`#${pathId}`} startOffset="50%">
+                                          {textDisplay}
+                                        </textPath>
+                                      </text>
+                                    </svg>
+                                  </div>
+                                ) : (
+                                  <div
+                                    style={{
+                                      backgroundColor: zone.hasBackground
+                                        ? zone.backgroundColor || "rgba(0,0,0,0.5)"
+                                        : "transparent",
+                                      padding: zone.hasBackground ? "4px 8px" : "0",
+                                      borderRadius: zone.hasBackground ? "6px" : "0",
+                                      color: zone.textColor || "#ffffff",
+                                      fontSize: `${zone.fontSize || 18}px`,
+                                      textShadow: "0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.8)",
+                                    }}
+                                    className={`font-black tracking-wide whitespace-nowrap select-none ${getZoneFontCssClass(
+                                      zone.fontFamily
+                                    )}`}
+                                  >
+                                    {textDisplay}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )
                         })}
@@ -1496,43 +1586,306 @@ export const AdminProductEditPage: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Typography: Font Size & Rotation */}
-                        <div className="grid grid-cols-2 gap-3 pt-1">
-                          <div>
-                            <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-1">
-                              <span>Font Size:</span>
-                              <span className="font-mono text-slate-900">
-                                {personalizationZones[activeZoneIndex].fontSize || 18}px
-                              </span>
+                        {/* Typography: Font Size */}
+                        <div className="pt-1">
+                          <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-1">
+                            <span>Font Size:</span>
+                            <span className="font-mono text-slate-900">
+                              {personalizationZones[activeZoneIndex].fontSize || 18}px
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="10"
+                            max="60"
+                            value={personalizationZones[activeZoneIndex].fontSize || 18}
+                            onChange={(e) =>
+                              handleUpdateActiveZone("fontSize", Number(e.target.value))
+                            }
+                            className="w-full accent-amber-600"
+                          />
+                        </div>
+
+                        {/* 360° Rotation Control */}
+                        <div className="pt-2 border-t border-slate-200/80 space-y-2">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                            <span className="flex items-center gap-1.5">
+                              <RotateCw className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Rotation (360° Full Circle):</span>
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                max="360"
+                                value={((personalizationZones[activeZoneIndex].rotation ?? 0) % 360 + 360) % 360}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value)
+                                  handleUpdateActiveZone("rotation", ((val % 360) + 360) % 360)
+                                }}
+                                className="w-16 px-2 py-0.5 text-xs text-right font-mono font-bold border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                              />
+                              <span className="font-mono text-xs font-bold text-slate-500">°</span>
+                            </div>
+                          </div>
+
+                          <input
+                            type="range"
+                            min="0"
+                            max="360"
+                            step="1"
+                            value={((personalizationZones[activeZoneIndex].rotation ?? 0) % 360 + 360) % 360}
+                            onChange={(e) =>
+                              handleUpdateActiveZone("rotation", Number(e.target.value))
+                            }
+                            className="w-full accent-amber-600 cursor-pointer"
+                          />
+
+                          {/* Quick Degree Preset Buttons */}
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            {[
+                              { label: "0° Normal", deg: 0 },
+                              { label: "90° Vertical", deg: 90 },
+                              { label: "180° Invert", deg: 180 },
+                              { label: "270° Up", deg: 270 },
+                            ].map((preset) => {
+                              const currentDeg = ((personalizationZones[activeZoneIndex].rotation ?? 0) % 360 + 360) % 360
+                              const isSelected = currentDeg === preset.deg
+                              return (
+                                <button
+                                  key={preset.deg}
+                                  type="button"
+                                  onClick={() => handleUpdateActiveZone("rotation", preset.deg)}
+                                  className={`px-2 py-1 text-[10px] font-bold rounded-md border transition-all ${
+                                    isSelected
+                                      ? "bg-amber-500 text-white border-amber-600 shadow-xs"
+                                      : "bg-white border-slate-200 text-slate-700 hover:bg-amber-50 hover:border-amber-300"
+                                  }`}
+                                >
+                                  {preset.label}
+                                </button>
+                              )
+                            })}
+                            <div className="flex items-center gap-1 ml-auto">
+                              <button
+                                type="button"
+                                title="Nudge 15° counter-clockwise"
+                                onClick={() => {
+                                  const cur = ((personalizationZones[activeZoneIndex].rotation ?? 0) % 360 + 360) % 360
+                                  handleUpdateActiveZone("rotation", (cur - 15 + 360) % 360)
+                                }}
+                                className="px-2 py-1 text-[10px] font-bold rounded-md border bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                              >
+                                ↺ -15°
+                              </button>
+                              <button
+                                type="button"
+                                title="Nudge 15° clockwise"
+                                onClick={() => {
+                                  const cur = ((personalizationZones[activeZoneIndex].rotation ?? 0) % 360 + 360) % 360
+                                  handleUpdateActiveZone("rotation", (cur + 15) % 360)
+                                }}
+                                className="px-2 py-1 text-[10px] font-bold rounded-md border bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                              >
+                                ↻ +15°
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3D SURFACE ORIENTATION & PERSPECTIVE (Lying Flat on Table / Angled Surfaces) */}
+                        <div className="pt-3 border-t border-slate-200/80 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800">
+                              <Layers className="w-3.5 h-3.5 text-amber-600" />
+                              <span>3D Surface Tilt & Perspective (Lie Flat):</span>
+                            </span>
+                            {((personalizationZones[activeZoneIndex].rotateX || 0) !== 0 ||
+                              (personalizationZones[activeZoneIndex].rotateY || 0) !== 0 ||
+                              (personalizationZones[activeZoneIndex].skewX || 0) !== 0 ||
+                              (personalizationZones[activeZoneIndex].skewY || 0) !== 0) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleUpdateActiveZone("rotateX", 0)
+                                  handleUpdateActiveZone("rotateY", 0)
+                                  handleUpdateActiveZone("skewX", 0)
+                                  handleUpdateActiveZone("skewY", 0)
+                                }}
+                                className="text-[10px] font-bold text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                              >
+                                Reset 3D Flat
+                              </button>
+                            )}
+                          </div>
+
+                          <p className="text-[10px] text-slate-500 leading-tight">
+                            Tilts text in 3D to lie flat on horizontal surfaces (books, diaries, tables) facing up in Z-axis or matches perspective angles.
+                          </p>
+
+                          {/* Quick Perspective Presets */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateActiveZoneMultiple({
+                                  rotateX: 0,
+                                  rotateY: 0,
+                                  skewX: 0,
+                                  skewY: 0,
+                                  rotation: 0,
+                                })
+                              }}
+                              className={`px-2 py-1 text-[10px] font-bold rounded-md border transition-all ${
+                                (personalizationZones[activeZoneIndex].rotateX || 0) === 0 &&
+                                (personalizationZones[activeZoneIndex].skewX || 0) === 0
+                                  ? "bg-amber-500 text-white border-amber-600 shadow-xs"
+                                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                              }`}
+                            >
+                              🎯 Flat 2D
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateActiveZoneMultiple({
+                                  rotation: 342,
+                                  rotateX: 40,
+                                  rotateY: 0,
+                                  skewX: -12,
+                                  skewY: 0,
+                                })
+                              }}
+                              className="px-2 py-1 text-[10px] font-bold rounded-md border bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100 transition-all shadow-xs"
+                            >
+                              📖 Tabletop / Diary (Lying Flat)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleUpdateActiveZoneMultiple({
+                                  rotateX: 30,
+                                  rotateY: -15,
+                                  skewX: -8,
+                                  skewY: 0,
+                                })
+                              }}
+                              className="px-2 py-1 text-[10px] font-bold rounded-md border bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                            >
+                              📦 Slanted Box
+                            </button>
+                          </div>
+
+                          {/* 3D Tilt X (Facing Up / Lying Flat on Table) */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-[11px] font-bold text-slate-700">
+                              <span>📐 3D Tilt X (Face Up / Lie Flat on Table):</span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="-80"
+                                  max="80"
+                                  value={personalizationZones[activeZoneIndex].rotateX ?? 0}
+                                  onChange={(e) => handleUpdateActiveZone("rotateX", Number(e.target.value))}
+                                  className="w-14 px-1.5 py-0.5 text-xs text-right font-mono font-bold border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                                />
+                                <span className="font-mono text-xs font-bold text-slate-500">°</span>
+                              </div>
                             </div>
                             <input
                               type="range"
-                              min="12"
-                              max="48"
-                              value={personalizationZones[activeZoneIndex].fontSize || 18}
-                              onChange={(e) =>
-                                handleUpdateActiveZone("fontSize", Number(e.target.value))
-                              }
-                              className="w-full accent-amber-600"
+                              min="-80"
+                              max="80"
+                              step="1"
+                              value={personalizationZones[activeZoneIndex].rotateX ?? 0}
+                              onChange={(e) => handleUpdateActiveZone("rotateX", Number(e.target.value))}
+                              className="w-full accent-amber-600 cursor-pointer"
+                            />
+                            <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                              <span>-80° (Tilt Down)</span>
+                              <span>0° (Vertical Flat)</span>
+                              <span>+80° (Lie Flat on Table)</span>
+                            </div>
+                          </div>
+
+                          {/* 3D Tilt Y (Side Angle) */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-[11px] font-bold text-slate-700">
+                              <span>📐 3D Tilt Y (Turn Left/Right in 3D):</span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="-80"
+                                  max="80"
+                                  value={personalizationZones[activeZoneIndex].rotateY ?? 0}
+                                  onChange={(e) => handleUpdateActiveZone("rotateY", Number(e.target.value))}
+                                  className="w-14 px-1.5 py-0.5 text-xs text-right font-mono font-bold border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                                />
+                                <span className="font-mono text-xs font-bold text-slate-500">°</span>
+                              </div>
+                            </div>
+                            <input
+                              type="range"
+                              min="-80"
+                              max="80"
+                              step="1"
+                              value={personalizationZones[activeZoneIndex].rotateY ?? 0}
+                              onChange={(e) => handleUpdateActiveZone("rotateY", Number(e.target.value))}
+                              className="w-full accent-amber-600 cursor-pointer"
                             />
                           </div>
 
-                          <div>
-                            <div className="flex justify-between text-[11px] font-bold text-slate-700 mb-1">
-                              <span>Rotation:</span>
-                              <span className="font-mono text-slate-900">
-                                {personalizationZones[activeZoneIndex].rotation || 0}°
-                              </span>
+                          {/* Skew X (Surface Shear) */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-[11px] font-bold text-slate-700">
+                              <span>↔️ Surface Skew X (Horizontal Slant):</span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="-60"
+                                  max="60"
+                                  value={personalizationZones[activeZoneIndex].skewX ?? 0}
+                                  onChange={(e) => handleUpdateActiveZone("skewX", Number(e.target.value))}
+                                  className="w-14 px-1.5 py-0.5 text-xs text-right font-mono font-bold border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                                />
+                                <span className="font-mono text-xs font-bold text-slate-500">°</span>
+                              </div>
                             </div>
                             <input
                               type="range"
-                              min="-90"
-                              max="90"
-                              value={personalizationZones[activeZoneIndex].rotation || 0}
-                              onChange={(e) =>
-                                handleUpdateActiveZone("rotation", Number(e.target.value))
-                              }
-                              className="w-full accent-amber-600"
+                              min="-60"
+                              max="60"
+                              step="1"
+                              value={personalizationZones[activeZoneIndex].skewX ?? 0}
+                              onChange={(e) => handleUpdateActiveZone("skewX", Number(e.target.value))}
+                              className="w-full accent-amber-600 cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Skew Y */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-[11px] font-bold text-slate-700">
+                              <span>↕️ Surface Skew Y (Vertical Shear):</span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="-60"
+                                  max="60"
+                                  value={personalizationZones[activeZoneIndex].skewY ?? 0}
+                                  onChange={(e) => handleUpdateActiveZone("skewY", Number(e.target.value))}
+                                  className="w-14 px-1.5 py-0.5 text-xs text-right font-mono font-bold border border-slate-300 rounded bg-white text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                                />
+                                <span className="font-mono text-xs font-bold text-slate-500">°</span>
+                              </div>
+                            </div>
+                            <input
+                              type="range"
+                              min="-60"
+                              max="60"
+                              step="1"
+                              value={personalizationZones[activeZoneIndex].skewY ?? 0}
+                              onChange={(e) => handleUpdateActiveZone("skewY", Number(e.target.value))}
+                              className="w-full accent-amber-600 cursor-pointer"
                             />
                           </div>
                         </div>
@@ -1664,6 +2017,33 @@ export const AdminProductEditPage: React.FC = () => {
                               className="w-7 h-7 rounded border border-slate-300 cursor-pointer"
                               title="Custom Color"
                             />
+                          </div>
+                        </div>
+
+                        {/* Engraving Font Style Presets */}
+                        <div className="pt-2 border-t border-slate-200">
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                            Engraving Font Style:
+                          </label>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {FONT_OPTIONS.map((f) => {
+                              const isSelected =
+                                (personalizationZones[activeZoneIndex].fontFamily || "sans") === f.id
+                              return (
+                                <button
+                                  key={f.id}
+                                  type="button"
+                                  onClick={() => handleUpdateActiveZone("fontFamily", f.id)}
+                                  className={`px-2.5 py-1 rounded-md text-[11px] border cursor-pointer transition-all ${
+                                    isSelected
+                                      ? "border-amber-600 ring-1 ring-amber-500 bg-amber-50 text-zinc-950 font-bold shadow-xs"
+                                      : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
+                                  }`}
+                                >
+                                  <span className={f.cssClass}>{f.name}</span>
+                                </button>
+                              )
+                            })}
                           </div>
                         </div>
                       </div>

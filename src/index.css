@@ -7,3 +7,21 @@
     @apply bg-zinc-50 text-zinc-900;
   }
 }
+
+/* Custom Gifting Laser Engraving Fonts */
+.font-elmessiri {
+  font-family: 'El Messiri', serif;
+}
+.font-signature {
+  font-family: 'Great Vibes', cursive;
+}
+.font-lobster {
+  font-family: 'Lobster', cursive;
+}
+.font-pacifico {
+  font-family: 'Pacifico', cursive;
+}
+.font-cursive {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+}

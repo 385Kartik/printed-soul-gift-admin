@@ -44,7 +44,7 @@ export const AdminCustomersPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[750px]">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="px-5 py-3">Customer</th>

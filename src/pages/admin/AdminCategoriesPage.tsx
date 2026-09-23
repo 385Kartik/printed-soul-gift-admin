@@ -13,6 +13,7 @@ import {
   Loader2,
   AlertCircle,
   X,
+  FolderPlus,
 } from "lucide-react"
 import { adminApi } from "../../lib/api"
 import { getImageUrl } from "../../lib/utils"
@@ -28,6 +29,7 @@ interface Category {
   showOnHome: boolean
   homeOrder: number
   sortOrder: number
+  parentCategory?: string | { _id: string; name: string; slug: string }
   isActive: boolean
 }
 
@@ -46,6 +48,7 @@ export const AdminCategoriesPage: React.FC = () => {
   const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
   const [image, setImage] = useState("")
+  const [parentCategory, setParentCategory] = useState("")
   const [showOnNavbar, setShowOnNavbar] = useState(true)
   const [navDisplayName, setNavDisplayName] = useState("")
   const [showOnHome, setShowOnHome] = useState(true)
@@ -75,10 +78,29 @@ export const AdminCategoriesPage: React.FC = () => {
     setSlug("")
     setDescription("")
     setImage("")
+    setParentCategory("")
     setShowOnNavbar(true)
     setNavDisplayName("")
     setShowOnHome(true)
     setHomeOrder(categories.length + 1)
+    setSortOrder(categories.length + 1)
+    setIsActive(true)
+    setError("")
+    setModalOpen(true)
+  }
+
+  const openAddSubModal = (parentId?: string) => {
+    setEditingCategory(null)
+    setName("")
+    setSlug("")
+    setDescription("")
+    setImage("")
+    const topCat = categories.find((c) => !c.parentCategory)
+    setParentCategory(parentId || topCat?._id || "")
+    setShowOnNavbar(true)
+    setNavDisplayName("")
+    setShowOnHome(false)
+    setHomeOrder(0)
     setSortOrder(categories.length + 1)
     setIsActive(true)
     setError("")
@@ -91,6 +113,8 @@ export const AdminCategoriesPage: React.FC = () => {
     setSlug(cat.slug)
     setDescription(cat.description || "")
     setImage(cat.image || "")
+    const pId = typeof cat.parentCategory === "object" ? cat.parentCategory?._id || "" : cat.parentCategory || ""
+    setParentCategory(pId)
     setShowOnNavbar(cat.showOnNavbar)
     setNavDisplayName(cat.navDisplayName || cat.name)
     setShowOnHome(cat.showOnHome)
@@ -132,6 +156,7 @@ export const AdminCategoriesPage: React.FC = () => {
         slug: slug.trim() || undefined,
         description,
         image,
+        parentCategory: parentCategory || null,
         showOnNavbar,
         navDisplayName: navDisplayName.trim() || name.trim(),
         showOnHome,
@@ -181,13 +206,22 @@ export const AdminCategoriesPage: React.FC = () => {
             Configure which categories appear in the customer website navbar and homepage showcase.
           </p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 shadow-sm self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Category</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Add Main Category</span>
+          </button>
+          <button
+            onClick={() => openAddSubModal()}
+            className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white text-xs font-semibold rounded-xl transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <FolderPlus className="w-4 h-4 text-amber-400" />
+            <span>+ Add Sub-Category</span>
+          </button>
+        </div>
       </div>
 
       {/* Success Notification */}
@@ -228,7 +262,7 @@ export const AdminCategoriesPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[850px]">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="px-5 py-3">Category</th>
@@ -242,23 +276,49 @@ export const AdminCategoriesPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {categories.map((cat) => (
-                  <tr key={cat._id} className="hover:bg-slate-50/70">
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={getImageUrl(cat.image)}
-                          alt={cat.name}
-                          className="w-10 h-10 rounded-lg object-cover border border-slate-100 flex-shrink-0"
-                        />
-                        <div>
-                          <p className="font-semibold text-slate-900">{cat.name}</p>
-                          <p className="text-[11px] text-slate-400 line-clamp-1">
-                            {cat.description || "No description"}
-                          </p>
+                {categories.map((cat) => {
+                  const parentName =
+                    typeof cat.parentCategory === "object"
+                      ? cat.parentCategory?.name
+                      : categories.find((c) => c._id === cat.parentCategory)?.name
+                  const isSub = !!cat.parentCategory
+
+                  return (
+                    <tr
+                      key={cat._id}
+                      className={`hover:bg-slate-50/70 ${isSub ? "bg-amber-50/20" : ""}`}
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          {isSub && (
+                            <span className="text-amber-500 font-mono text-sm font-bold pl-2">
+                              └─
+                            </span>
+                          )}
+                          <img
+                            src={getImageUrl(cat.image)}
+                            alt={cat.name}
+                            className="w-10 h-10 rounded-lg object-cover border border-slate-100 flex-shrink-0"
+                          />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-slate-900">{cat.name}</p>
+                              {isSub ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                                  Sub of {parentName}
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                  Main Category
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-400 line-clamp-1">
+                              {cat.description || "No description"}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
                     <td className="px-5 py-3.5 font-mono text-[11px] text-slate-500">
                       /{cat.slug}
                     </td>
@@ -305,6 +365,16 @@ export const AdminCategoriesPage: React.FC = () => {
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {!isSub && (
+                          <button
+                            onClick={() => openAddSubModal(cat._id)}
+                            title="Add sub-category under this category"
+                            className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                          >
+                            <FolderPlus className="w-3.5 h-3.5 text-amber-600" />
+                            <span>+ Sub-category</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => openEditModal(cat)}
                           title="Edit Category"
@@ -322,7 +392,8 @@ export const AdminCategoriesPage: React.FC = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )
+              })}
               </tbody>
             </table>
           </div>
@@ -387,6 +458,31 @@ export const AdminCategoriesPage: React.FC = () => {
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 font-mono"
                   />
                 </div>
+              </div>
+
+              {/* Parent Category Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Parent Category (Leave empty for Main / Top-Level Category)
+                </label>
+                <select
+                  value={parentCategory}
+                  onChange={(e) => setParentCategory(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 font-medium"
+                >
+                  <option value="">None — Top Level Main Category</option>
+                  {categories
+                    .filter((c) => !editingCategory || c._id !== editingCategory._id)
+                    .filter((c) => !c.parentCategory) // only allow top-level categories as parents
+                    .map((c) => (
+                      <option key={c._id} value={c._id}>
+                        📁 {c.name}
+                      </option>
+                    ))}
+                </select>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  If selected, this category will become a sub-category nested under the parent category.
+                </span>
               </div>
 
               <div>
