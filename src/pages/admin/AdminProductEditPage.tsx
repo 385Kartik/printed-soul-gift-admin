@@ -108,6 +108,7 @@ export const AdminProductEditPage: React.FC = () => {
   const [images, setImages] = useState<string[]>([])
   const [isFeatured, setIsFeatured] = useState(false)
   const [isBestSeller, setIsBestSeller] = useState(false)
+  const [allowAddons, setAllowAddons] = useState(true)
   const [isPersonalizable, setIsPersonalizable] = useState(false)
   const [personalizationPrompt, setPersonalizationPrompt] = useState("Enter Name or Custom Message")
   const [allowCustomImageUpload, setAllowCustomImageUpload] = useState(false)
@@ -151,6 +152,7 @@ export const AdminProductEditPage: React.FC = () => {
             setImages(current.images || [])
             setIsFeatured(!!current.isFeatured)
             setIsBestSeller(!!current.isBestSeller)
+            setAllowAddons(current.allowAddons !== false)
             setIsPersonalizable(!!current.isPersonalizable)
             setPersonalizationPrompt(current.personalizationPrompt || "Enter Name or Custom Message")
             setAllowCustomImageUpload(!!current.allowCustomImageUpload)
@@ -449,6 +451,7 @@ export const AdminProductEditPage: React.FC = () => {
         images,
         isFeatured,
         isBestSeller,
+        allowAddons,
         isPersonalizable,
         personalizationPrompt: isPersonalizable ? personalizationPrompt : undefined,
         allowCustomImageUpload: isPersonalizable ? allowCustomImageUpload : false,
@@ -2227,6 +2230,16 @@ export const AdminProductEditPage: React.FC = () => {
                 className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
               />
               <span className="text-xs font-medium text-slate-700">Mark as Best Seller</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allowAddons}
+                onChange={(e) => setAllowAddons(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+              />
+              <span className="text-xs font-medium text-slate-700">Show "Make it extra special" Addons</span>
             </label>
           </div>
         </div>
