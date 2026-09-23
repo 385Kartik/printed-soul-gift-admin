@@ -118,6 +118,8 @@ export const AdminProductEditPage: React.FC = () => {
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
   const [tagsInput, setTagsInput] = useState("")
+  const [inclusions, setInclusions] = useState<string[]>([])
+  const [specifications, setSpecifications] = useState<{label: string; value: string}[]>([])
   const [bulkPricingTiers, setBulkPricingTiers] = useState<any[]>([
     { title: "Buy 1 Gift", subtitle: "Standard price", minQty: 1, maxQty: 1, discountPercent: 0, badgeText: "" },
     { title: "Buy 2 - 20 Gifts", subtitle: "Best option", minQty: 2, maxQty: 20, discountPercent: 45, badgeText: "Save 45%" },
@@ -176,6 +178,8 @@ export const AdminProductEditPage: React.FC = () => {
             setSelectedOccasions(current.giftOccasions || [])
             setSelectedRecipients(current.recipient || [])
             setTagsInput(current.tags ? current.tags.join(", ") : "")
+            setInclusions(current.inclusions || [])
+            setSpecifications(current.specifications || [])
             setHoverMediaType(current.hoverMediaType || "image")
             setHoverMediaUrl(current.hoverMediaUrl || "")
             if (current.bulkPricingTiers && current.bulkPricingTiers.length > 0) {
@@ -457,6 +461,8 @@ export const AdminProductEditPage: React.FC = () => {
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean),
+        inclusions,
+        specifications,
         bulkPricingTiers,
       }
 
@@ -633,6 +639,97 @@ export const AdminProductEditPage: React.FC = () => {
             />
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+            {/* Inclusions */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700">Hamper Inclusions</label>
+                <button
+                  type="button"
+                  onClick={() => setInclusions(prev => [...prev, ""])}
+                  className="text-[10px] text-amber-600 font-bold hover:text-amber-700 flex items-center gap-0.5"
+                >
+                  <Plus className="w-3 h-3" /> Add Item
+                </button>
+              </div>
+              {inclusions.map((inc, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={inc}
+                    onChange={(e) => {
+                      const next = [...inclusions];
+                      next[i] = e.target.value;
+                      setInclusions(next);
+                    }}
+                    placeholder="e.g. 1 × Premium Polo T-Shirt"
+                    className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setInclusions(prev => prev.filter((_, idx) => idx !== i))}
+                    className="text-rose-500 hover:text-rose-700 p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {inclusions.length === 0 && (
+                <div className="text-[11px] text-slate-400 italic">No inclusions added yet.</div>
+              )}
+            </div>
+
+            {/* Specifications */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700">Key Specifications</label>
+                <button
+                  type="button"
+                  onClick={() => setSpecifications(prev => [...prev, { label: "", value: "" }])}
+                  className="text-[10px] text-amber-600 font-bold hover:text-amber-700 flex items-center gap-0.5"
+                >
+                  <Plus className="w-3 h-3" /> Add Spec
+                </button>
+              </div>
+              {specifications.map((spec, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={spec.label}
+                    onChange={(e) => {
+                      const next = [...specifications];
+                      next[i].label = e.target.value;
+                      setSpecifications(next);
+                    }}
+                    placeholder="Label (e.g. Material)"
+                    className="w-1/3 px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                  />
+                  <input
+                    type="text"
+                    value={spec.value}
+                    onChange={(e) => {
+                      const next = [...specifications];
+                      next[i].value = e.target.value;
+                      setSpecifications(next);
+                    }}
+                    placeholder="Value (e.g. Premium Cotton)"
+                    className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSpecifications(prev => prev.filter((_, idx) => idx !== i))}
+                    className="text-rose-500 hover:text-rose-700 p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {specifications.length === 0 && (
+                <div className="text-[11px] text-slate-400 italic">No specifications added yet.</div>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -691,12 +788,12 @@ export const AdminProductEditPage: React.FC = () => {
               {uploadingImage ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Upload className="w-4 h-4" />
+              <Upload className="w-4 h-4" />
               )}
-              <span>Upload Local Image</span>
+              <span>Upload Local File</span>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,video/mp4,video/webm"
                 className="hidden"
                 onChange={handleImageUpload}
                 disabled={uploadingImage}
