@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Users,
   Image as ImageIcon,
+  Palette,
   LogOut,
   Menu,
   X,
@@ -26,6 +27,7 @@ const navItems = [
   { to: "/refunds", label: "Refunds", icon: RotateCcw },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/banners", label: "Promotional Banners", icon: ImageIcon },
+  { to: "/customizer", label: "Store Customizer", icon: Palette },
 ]
 
 export const AdminLayout: React.FC = () => {

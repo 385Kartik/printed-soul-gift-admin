@@ -78,6 +78,10 @@ export const adminApi = {
   updateAddon: (id: string, data: any) => api.put(`/admin/addons/${id}`, data),
   deleteAddon: (id: string) => api.delete(`/admin/addons/${id}`),
 
+  // Theme & Customizer
+  getTheme: () => api.get("/admin/theme"),
+  updateTheme: (data: any) => api.put("/admin/theme", data),
+
   // Upload
   uploadFile: (file: File) => {
     const fd = new FormData()
