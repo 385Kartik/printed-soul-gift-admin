@@ -133,10 +133,12 @@ export const AdminCategoriesPage: React.FC = () => {
       setUploadingImage(true)
       const res = await adminApi.uploadFile(file)
       setImage(res.data?.data?.url || res.data?.data?.path)
+      setSuccessMsg("Image uploaded successfully!")
     } catch (err: any) {
       setError(err?.response?.data?.message || "Image upload failed")
     } finally {
       setUploadingImage(false)
+      if (e.target) e.target.value = ""
     }
   }
 

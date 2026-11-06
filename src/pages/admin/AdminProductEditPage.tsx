@@ -91,6 +91,7 @@ export const AdminProductEditPage: React.FC = () => {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingHoverMedia, setUploadingHoverMedia] = useState(false)
   const [imageUploadError, setImageUploadError] = useState("")
+  const [imageUploadSuccess, setImageUploadSuccess] = useState("")
   const [hoverMediaUploadError, setHoverMediaUploadError] = useState("")
   const [hoverMediaUploadSuccess, setHoverMediaUploadSuccess] = useState("")
   const [error, setError] = useState("")
@@ -205,10 +206,12 @@ export const AdminProductEditPage: React.FC = () => {
     try {
       setUploadingImage(true)
       setImageUploadError("")
+      setImageUploadSuccess("")
       const res = await adminApi.uploadFile(file)
       const url = res.data?.data?.url || res.data?.data?.path
       if (url) {
         setImages((prev) => [...prev, url])
+        setImageUploadSuccess("✓ Image uploaded and added to product images gallery!")
       }
     } catch (err: any) {
       const msg =
@@ -219,6 +222,7 @@ export const AdminProductEditPage: React.FC = () => {
       setError(msg)
     } finally {
       setUploadingImage(false)
+      if (e.target) e.target.value = ""
     }
   }
 
@@ -254,6 +258,7 @@ export const AdminProductEditPage: React.FC = () => {
       setError(msg)
     } finally {
       setUploadingHoverMedia(false)
+      if (e.target) e.target.value = ""
     }
   }
 
@@ -814,6 +819,22 @@ export const AdminProductEditPage: React.FC = () => {
                 type="button"
                 onClick={() => setImageUploadError("")}
                 className="text-rose-400 hover:text-rose-700 text-xs font-bold px-1"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {imageUploadSuccess && (
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span>{imageUploadSuccess}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setImageUploadSuccess("")}
+                className="text-emerald-400 hover:text-emerald-700 text-xs font-bold px-1"
               >
                 ✕
               </button>

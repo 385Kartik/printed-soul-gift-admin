@@ -106,10 +106,12 @@ export const AdminBannersPage: React.FC = () => {
       } else {
         setImageUrl(uploadedUrl)
       }
+      setMsg("Media file uploaded successfully! Click 'Save Banner' to apply changes.")
     } catch (err) {
       alert("Media upload failed. Maximum allowed file size is 60MB.")
     } finally {
       setUploadingMedia(false)
+      if (e.target) e.target.value = ""
     }
   }
 
@@ -560,6 +562,12 @@ export const AdminBannersPage: React.FC = () => {
                 <p className="text-[10px] text-slate-400 mt-1">
                   Supports JPG, PNG, WebP images and MP4, WebM videos up to 60MB.
                 </p>
+                {(imageUrl || videoUrl) && (
+                  <div className="mt-2 flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-[11px]">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+                    <span className="truncate">Uploaded &amp; attached: <strong>{videoUrl || imageUrl}</strong></span>
+                  </div>
+                )}
               </div>
 
               {/* Media Live Preview */}
